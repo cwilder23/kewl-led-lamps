@@ -1,84 +1,112 @@
-include <helix_extrude.scad>
+include <lib/HelixLib/helix_extrude.scad>
+include <BOSL2/fnliterals.scad>
+include <BOSL2/std.scad>
+include <BOSL2/strings.scad>
+/*
+    TODO: Document hardware used: LED Strip models, MCU, powersupply, side-glow optics, etc.
+    TODO: Set helix bar size using the LED strip width. Inner size will be: ledStripWidth + tolerance
+    TODO: Use these vars to compute bar size: wallThickness, hollowSize
+    TODO: Determine rungDiameter
+ */
 
-// TODO: include LEDPithch = 16.25
+/* 
+    Custom function 
+    
+    TODO: Move to their own file
+*/
+// Round a number to the specific decimal precision.
+// Required Lib(s):
+//  BOSL2
+function round_to_decimal(number, precision) = 
+    parse_float(format_fixed(number, precision));
+    
+function archLength(angle, radius) = (2 * PI * radius * angle) / 360;
+function toRadians(degrees) = (PI / 180) * degrees;
+function toDegrees(radians) = (180 / PI) * radians;
 
-eps = 0.001;
+/* Global Variables */
 
-precision = 50;
+/** Tolerances */
+eps = 0.001;            // Epsilon - delta used for open spaces in shapes
 
-axelRadius = 10;
-pitch = 180;
-angle = 360;
-numTurns = 2;
-height = pitch * numTurns;
+/** Rendering */
+precision = $preview ? 24 : 72;             // Keep to multiples of 4
+$fn = precision;
 
-trapezoidHeight = 30;
+/**  LED strip specs */
+ledPitch = 16;                  // PARAM distance between LED components on the LED strip 
 
-outerHelixSquare = 8;
-innerHelixSquare = 6;
+/**  Helix structure */
+stepsPerTurn = 12;              // PARAM. Selected from "double-helix-analysis-for-parametric-design!finding Coeffs"
+height = 360;                   // PARAM
+numTurns = 2;                   // PARAM
+pitch = height / numTurns;
+dnaRadius=round_to_decimal((stepsPerTurn * ledPitch) / (2 * PI), 2);
 
-numSteps = 15;
-numBases = numSteps * numTurns;
-basesRadius = 1;
-dnaRadius = 30.5;
+/** Helix bars shape */
+outerHelixSquare = 8;           // PARAM
+innerHelixSquare = 6;           // PARAM
 
-// Module used to create the polygon
-// (to make it easier to re-use with rotate_extrude)
-module helixPolygon() {
-	// Move the trapezoid away from the center
-	translate([axelRadius, 0, 0]) {
-		// Simple trapezoid
-		polygon([
-			[0, 0],
-			[20, 10],
-			[20, trapezoidHeight-10],
-			[0, trapezoidHeight]
-		]);
-	}
-}
+/** Helix rungs */
+rungDiameter = 1;                // PARAM. 
+zStepSize = pitch / stepsPerTurn;
+numRungs = zStepSize * numTurns;
+arcTheta=toDegrees((2*PI) / stepsPerTurn);
+
 
 // DNA double-helix
-translate([0, 0, 0]) {
+module dnaLampHelix() {      
 
-    difference(){       // Create helix ladder holes
-        union() {
+    translate([0, 0, 0]) {
+
+        difference(){       // Creates helix ladder holes
+            union() {       // Combines helixes
+                
+            //RHS helix
+            difference() {  // Hollows out RHS helix path
+                helix_extrude(angle=360 * numTurns, height=height) {
+                    translate([dnaRadius, 0, 0]) {
+                        square(outerHelixSquare, center= true);
+                    }
+                }
+                 helix_extrude(angle=360 * numTurns + eps, height=height) {
+                    translate([dnaRadius, 0, 0]) {
+                        square(innerHelixSquare, center= true);
+                    }
+                }
+            }
             
-        //RHS helix
-        difference() {  // Hollows out helix path
-            helix_extrude(angle=angle * numTurns, height=height, $fn=precision) {
-                translate([dnaRadius, 0, 0]) {
-                    square(outerHelixSquare, center= true);
+            //LHS helix
+            difference() {  // Hollows out LHS helix path
+                helix_extrude(angle=360 * numTurns, height=height) {
+                    translate([-dnaRadius, 0, 0]) {
+                        square(outerHelixSquare, center= true);
+                    }
+                }
+                
+                helix_extrude(angle=360 * numTurns + eps, height=height) {
+                    translate([-dnaRadius, 0, 0]) {
+                        square(innerHelixSquare, center= true);
+                    }
                 }
             }
-             helix_extrude(angle=angle * numTurns + eps, height=height, $fn=precision) {
-                translate([dnaRadius, 0, 0]) {
-                    square(innerHelixSquare, center= true);
-                }
-            }
-        }
+
+        }   /* Helix Union - end */
         
-        //LHS helix
-        difference() {  // Hollows out helix path
-            helix_extrude(angle=angle * numTurns, height=height, $fn=precision) {
-                translate([-dnaRadius, 0, 0]) {
-                    square(outerHelixSquare, center= true);
-                }
-            }
-            
-            helix_extrude(angle=360 * numTurns + eps, height=height, $fn=precision) {
-                translate([-dnaRadius, 0, 0]) {
-                    square(innerHelixSquare, center= true);
-                }
-            }
-        }
-
-	}   /* Helix Union - end */
-    
-    // Holes for side-glow fiber; double helix bases
-    for (i=[1:numBases])
-    translate([0, 0, i*15])           //3.25        // TODO: add equation
-        rotate([0, 90, i*30])        //29.25        // TODO: use equation: (180/PI()) * ((2*PI()) / A15)
-            cylinder(r=basesRadius, h=dnaRadius * 2, center=true, $fn=precision);
-    
-    }   /* Helix Difference - end */
+        // Holes for side-glow fiber; double helix rungs
+        for (i=[1:numRungs])
+        translate([0, 0, i * zStepSize])           //15
+            rotate([0, 90, i * arcTheta])          //30
+                cylinder(r=rungDiameter / 2, h=dnaRadius * 2, center=true);
+        
+        }   /* Helix Difference - end */
+    }
 }
+
+// Render it
+dnaLampHelix();
+
+// TODO: Define render for exporting model. Set convexity to 10
+//render(convexity=10){
+//  dnaLampHelix();
+//}
