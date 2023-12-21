@@ -38,7 +38,7 @@ $fn = precision;
 ledPitch = 16;                  // PARAM distance between LED components on the LED strip 
 
 /**  Helix structure */
-stepsPerTurn = 12;              // PARAM. Selected from "double-helix-analysis-for-parametric-design!finding Coeffs"
+stepsPerTurn = 8;              // PARAM. Selected from "double-helix-analysis-for-parametric-design!finding Coeffs"
 height = 360;                   // PARAM
 numTurns = 2;                   // PARAM
 pitch = height / numTurns;
@@ -61,26 +61,46 @@ arcTheta=toDegrees((2*PI) / stepsPerTurn);
 // anchoring objects to the paht.
 // TODO: Use the helix() method to draw
 module helixPath(l,t,r){ //(height, angle, turns, r) {
-    // path = helix(l|h, [turns=], [angle=], r=|r1=|r2=, d=|d1=|d2=);
-    translate([25, 0, 0]) {
+    
+    translate([0, 0, 0]) {
         let (
-            path1 = helix(l=l, turns=t, r=r),
-            path2 = helix(l=l, turns=t, r=-r)
+            rhsHelixOuter = helix(l=l, turns=t, r=r),
+            rhsHelixInner = helix(l=l, turns=t+eps, r=r),
+            lhsHelixOuter = helix(l=l, turns=t, r=-r),
+            lhsHelixInner = helix(l=l, turns=t+eps, r=-r)
         ) {
-        //let (path = helix(l=height, turns=numTurns, r=dnaRadius)) {      
-            stroke(path1, dots=true, dots_color="blue");
-            //echo("helix path 1: ", path1);
-            stroke(path2, dots=true, dots_color="blue");
-            path_sweep(square(25, true), path2);
-            //echo("helix path 2: ", path2);
-        }
+           union() {
+               union() {
+                   difference() {
+                        //stroke(rhsHelixOuter, dots=true, dots_color="blue");
+                        path_sweep(square(outerHelixSquare, true), rhsHelixOuter);
+                        path_sweep(square(innerHelixSquare, true), lhsHelixInner);
+                        //echo("helix path 1 (RHS): ", rhsHelixOuter);
+                    } 
+                    
+                    
+                    difference() {
+                    //stroke(lhsHelix, dots=true, dots_color="blue");
+                        path_sweep(square(outerHelixSquare, true), lhsHelixOuter);
+                        path_sweep(square(innerHelixSquare, true), lhsHelixInner);
+                    //echo("helix path 2 (LHS): ", lhsHelix);
+                    }
+                }
+                // Holes for side-glow fiber; double helix rungs
+                for (i=[1:numRungs])
+                translate([0, 0, i * zStepSize])           //15
+                    rotate([0, 90, i * arcTheta])          //30
+                        cylinder(r=rungDiameter / 2, h=dnaRadius * 2, center=true);
+                
+              }
+        } 
     }
 }
 
 // DNA double-helix
 module dnaLampHelix() {      
 
-    translate([0, 0, 0]) {
+    translate([0, 80, 0]) {
 
         difference(){       // Creates helix ladder holes
             union() {       // Combines helixes
@@ -128,9 +148,7 @@ module dnaLampHelix() {
 
 // Render it
 dnaLampHelix();
-//translate([25, 0, 0]) {
-    helixPath(l=height, t=numTurns, r=dnaRadius);
-//}
+helixPath(l=height, t=numTurns, r=dnaRadius);
 
 // TODO: Define render for exporting model. Set convexity to 10
 //render(convexity=10){

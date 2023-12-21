@@ -29,6 +29,23 @@ function circum(radius) = 2 * PI * radius;
 echo("circum: ", circum(dnaRadius));
 echo("numSteps", circum(dnaRadius) / ledPitch);
 
+module analyzeRungs(numRungs, zStepSize, arcTheta, rungDiameter, dnaRadius) {      
+
+    translate([0, 0, 0]) {
+        
+        // Holes for side-glow fiber; double helix rungs
+        for (i=[1:numRungs])
+        translate([0, 0, i * zStepSize])           //15
+        //    echo("rotate: ", rotate([0, 90, i * arcTheta]))          //30
+        
+                    echo("rotate: ", i * arcTheta, "step: ", i * zStepSize)     
+                rotate([0, 90, i * arcTheta])     //30
+                cylinder(r=rungDiameter / 2, h=dnaRadius * 2, center=true);
+        
+    }   /* Helix translate - end */
+}
+
+
 // Green circle
 translate([0, 0, 6*3.25]) {
     color("LimeGreen", 1.0)
