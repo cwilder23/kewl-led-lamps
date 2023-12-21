@@ -27,6 +27,10 @@ function toDegrees(radians) = (180 / PI) * radians;
 
 /* Global Variables */
 
+/** Manual adjustments factors (FIXME) */
+RUNG_ADJ_FIXME = -6 - 1;    // TODO: figure out why the rungs extend beyond the helix
+
+
 /** Tolerances */
 eps = 0.001;            // Epsilon - delta used for open spaces in shapes
 
@@ -38,22 +42,21 @@ $fn = precision;
 ledPitch = 16;                  // PARAM distance between LED components on the LED strip 
 
 /**  Helix structure */
-stepsPerTurn = 8;              // PARAM. Selected from "double-helix-analysis-for-parametric-design!finding Coeffs"
+stepsPerTurn = 12;              // PARAM. Selected from "double-helix-analysis-for-parametric-design!finding Coeffs"
 height = 360;                   // PARAM
 numTurns = 2;                   // PARAM
 pitch = height / numTurns;
-dnaRadius=round_to_decimal((stepsPerTurn * ledPitch) / (2 * PI), 2);
+dnaRadius = round_to_decimal((stepsPerTurn * ledPitch) / (2 * PI), 2);
 
 /** Helix bars shape */
 outerHelixSquare = 8;           // PARAM
 innerHelixSquare = 6;           // PARAM
 
 /** Helix rungs */
-rungDiameter = 1;                // PARAM. 
+rungDiameter = 3;                // PARAM. 
 zStepSize = pitch / stepsPerTurn;
-numRungs = zStepSize * numTurns;
+numRungs = (zStepSize * numTurns) + RUNG_ADJ_FIXME;
 arcTheta=toDegrees((2*PI) / stepsPerTurn);
-
 
 
 // Generate the helix path. Necessary if we want to be able 
