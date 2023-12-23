@@ -38,22 +38,21 @@ $fn = precision;
 ledPitch = 16;                  // PARAM distance between LED components on the LED strip 
 
 /**  Helix structure */
-//stepsPerTurn = 12;              // PARAM. Selected from "double-helix-analysis-for-parametric-design!finding Coeffs"
 height = 360;                   // PARAM
 numTurns = 2;                   // PARAM
 pitch = height / numTurns;
 stepsPerTurn = pitch / ledPitch;
-dnaRadius = round_to_decimal((stepsPerTurn * ledPitch) / (2 * PI), 2);
+//dnaRadius = round_to_decimal((stepsPerTurn * ledPitch) / (2 * PI), 2);
+dnaRadius = 28.65;              // PARAM
+
 
 /** Helix bars shape */
 outerHelixSquare = 8;           // PARAM
 innerHelixSquare = 6;           // PARAM
 
 /** Helix rungs */
-rungDiameter = 3;                // PARAM. 
-//zStepSize = ledPitch / stepsPerTurn;
+rungDiameter = 3;                // PARAM
 zStepSize = ledPitch;
-//numRungs = (zStepSize * numTurns) + RUNG_ADJ_FIXME;
 numRungs = floor(height / ledPitch);
 arcTheta=toDegrees((2*PI) / stepsPerTurn);
 
@@ -61,27 +60,30 @@ echo("numRungs: ", numRungs);
 echo("dnaRadius: ", dnaRadius);
 echo("stepsPerTurn: ", stepsPerTurn);
 
+/** Helix paths - defined so we have points */
+rhsHelixOuter = helix(l=height, turns=numTurns, r=dnaRadius);
+rhsHelixInner = helix(l=height+eps, turns=numTurns, r=dnaRadius);
+lhsHelixOuter = helix(l=height, turns=numTurns, r=-dnaRadius);
+lhsHelixInner = helix(l=height+eps, turns=numTurns, r=-dnaRadius);
+
+
+// DNA double-helix
 // Generate the helix path. Necessary if we want to be able 
 // to get positional information. Also will add support for 
 // anchoring objects to the paht.
 // TODO: Use the helix() method to draw
-module helixPath(l,t,r){ //(height, angle, turns, r) {
+module dnaLampHelix(){ //(l,t,r){ //(height, angle, turns, r) {
     
     translate([0, 0, 0]) {
         let (
-            rhsHelixOuter = helix(l=l, turns=t, r=r),
-            rhsHelixInner = helix(l=l+eps, turns=t, r=r),
-            lhsHelixOuter = helix(l=l, turns=t, r=-r),
-            lhsHelixInner = helix(l=l+eps, turns=t, r=-r)
+//            rhsHelixOuter = helix(l=l, turns=t, r=r),
+//            rhsHelixInner = helix(l=l+eps, turns=t, r=r),
+//            lhsHelixOuter = helix(l=l, turns=t, r=-r),
+//            lhsHelixInner = helix(l=l+eps, turns=t, r=-r)
         ) {
-//           echo("max(rhsHelixOuter): ", max(rhsHelixOuter));
-//           echo("min(rhsHelixOuter): ", min(rhsHelixOuter));
-//           echo("max(lhsHelixOuter): ", max(lhsHelixOuter));
-//           echo("min(lhsHelixOuter): ", min(lhsHelixOuter));
            union() {
                union() {
                    difference() {
-                        //stroke(rhsHelixOuter, dots=true, dots_color="blue");
                         path_sweep(square(outerHelixSquare, true), rhsHelixOuter);
                         path_sweep(square(innerHelixSquare, true), rhsHelixInner);
                         //echo("helix path 1 (RHS): ", rhsHelixOuter);
@@ -89,10 +91,9 @@ module helixPath(l,t,r){ //(height, angle, turns, r) {
                     
                     
                     difference() {
-                    //stroke(lhsHelix, dots=true, dots_color="blue");
                         path_sweep(square(outerHelixSquare, true), lhsHelixOuter);
                         path_sweep(square(innerHelixSquare, true), lhsHelixInner);
-                    //echo("helix path 2 (LHS): ", lhsHelix);
+                        //echo("helix path 2 (LHS): ", lhsHelix);
                     }
                 }
                 // Holes for side-glow fiber; double helix rungs
@@ -106,60 +107,58 @@ module helixPath(l,t,r){ //(height, angle, turns, r) {
     }
 }
 
-// DNA double-helix
-module dnaLampHelix() {      
+/*
+    TODO: Attemptng to figure out how to draw a shape along, the path of the helix that, that will be the base for the join
+https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Tips_and_Tricks#Minimum_rotation_problem
+*/
 
-    translate([0, 80, 0]) {
+//echo("helix path 1 (RHS): ", rhsHelixOuter);
+echo("helix path 1 (RHS) len: ", len(rhsHelixOuter));
+echo("helix path 1 (RHS) mid: ", rhsHelixOuter[len(rhsHelixOuter) / 2]);
+echo("helix path 1 (RHS) mid: ", rhsHelixOuter[(len(rhsHelixOuter) / 2) - 1]);
 
-        difference(){       // Creates helix ladder holes
-            union() {       // Combines helixes
-                
-            //RHS helix
-            difference() {  // Hollows out RHS helix path
-                helix_extrude(angle=360 * numTurns, height=height) {
-                    translate([dnaRadius, 0, 0]) {
-                        square(outerHelixSquare, center= true);
-                    }
-                }
-                 helix_extrude(angle=360 * numTurns + eps, height=height) {
-                    translate([dnaRadius, 0, 0]) {
-                        square(innerHelixSquare, center= true);
-                    }
-                }
-            }
-            
-            //LHS helix
-            difference() {  // Hollows out LHS helix path
-                helix_extrude(angle=360 * numTurns, height=height) {
-                    translate([-dnaRadius, 0, 0]) {
-                        square(outerHelixSquare, center= true);
-                    }
-                }
-                
-                helix_extrude(angle=360 * numTurns + eps, height=height) {
-                    translate([-dnaRadius, 0, 0]) {
-                        square(innerHelixSquare, center= true);
-                    }
-                }
-            }
 
-        }   /* Helix Union - end */
-        
-        // Holes for side-glow fiber; double helix rungs
-        for (i=[1:numRungs])
-        translate([0, 0, i * zStepSize])           //15
-            rotate([0, 90, i * arcTheta])          //30
-                cylinder(r=rungDiameter / 2, h=dnaRadius * 2, center=true);
-        
-        }   /* Helix Difference - end */
-    }
-}
+//a=rhsJointUpper;
+//b=rhsJointLower;
+function angleBetween2Points(a,b)=atan2(norm(cross(a,b)),a*b);
+
+// Find the unitary vector with direction v. Fails if v=[0,0,0].
+function unit(v) = norm(v)>0 ? v/norm(v) : undef; 
+// Find the transpose of a rectangular matrix
+function transpose(m) = // m is any rectangular matrix of objects
+  [ for(j=[0:len(m[0])-1]) [ for(i=[0:len(m)-1]) m[i][j] ] ];
+// The identity matrix with dimension n
+function identity(n) = [for(i=[0:n-1]) [for(j=[0:n-1]) i==j ? 1 : 0] ];
+
+// computes the rotation with minimum angle that brings a to b
+// the code fails if a and b are opposed to each other
+function rotate_from_to(a,b) = 
+    let( axis = unit(cross(a,b)) )
+    axis*axis >= 0.99 ? 
+        transpose([unit(b), axis, cross(axis, unit(b))]) * 
+            [unit(a), axis, cross(axis, unit(a))] : 
+        identity(3);
+
+
+rhsJointUpper = rhsHelixOuter[len(rhsHelixOuter) / 2];
+rhsJointLower = rhsHelixOuter[(len(rhsHelixOuter) / 2) - 1];
+translate(rhsJointUpper)
+    rotate( [toDegrees(angleBetween2Points(rhsJointUpper,rhsJointLower)), toDegrees(angleBetween2Points(rhsJointUpper,rhsJointLower))/2, 0])
+    square(50, true);
+
+
+
+echo("arcTheta: ", arcTheta);
+echo("computed: ", toDegrees(angleBetween2Points(rhsJointUpper,rhsJointLower)));
+//echo("computed_2: ", rotate_from_to(rhsJointUpper,rhsJointLower));
+echo("unitVector: ", unit(rhsJointUpper));
+
 
 // Render it
-//dnaLampHelix();
-helixPath(l=height, t=numTurns, r=dnaRadius);
+dnaLampHelix();
+//dnaLampHelix(l=height, t=numTurns, r=dnaRadius);
 
 // TODO: Define render for exporting model. Set convexity to 10
 //render(convexity=10){
-//  dnaLampHelix();
+//  dnaLampHelix(l=height, t=numTurns, r=dnaRadius);
 //}
