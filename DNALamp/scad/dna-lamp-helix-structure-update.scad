@@ -27,10 +27,6 @@ function toDegrees(radians) = (180 / PI) * radians;
 
 /* Global Variables */
 
-/** Manual adjustments factors (FIXME) */
-RUNG_ADJ_FIXME = -6 - 1;    // TODO: figure out why the rungs extend beyond the helix
-
-
 /** Tolerances */
 eps = 0.001;            // Epsilon - delta used for open spaces in shapes
 
@@ -42,10 +38,11 @@ $fn = precision;
 ledPitch = 16;                  // PARAM distance between LED components on the LED strip 
 
 /**  Helix structure */
-stepsPerTurn = 12;              // PARAM. Selected from "double-helix-analysis-for-parametric-design!finding Coeffs"
+//stepsPerTurn = 12;              // PARAM. Selected from "double-helix-analysis-for-parametric-design!finding Coeffs"
 height = 360;                   // PARAM
 numTurns = 2;                   // PARAM
 pitch = height / numTurns;
+stepsPerTurn = pitch / ledPitch;
 dnaRadius = round_to_decimal((stepsPerTurn * ledPitch) / (2 * PI), 2);
 
 /** Helix bars shape */
@@ -54,10 +51,15 @@ innerHelixSquare = 6;           // PARAM
 
 /** Helix rungs */
 rungDiameter = 3;                // PARAM. 
-zStepSize = pitch / stepsPerTurn;
-numRungs = (zStepSize * numTurns) + RUNG_ADJ_FIXME;
+//zStepSize = ledPitch / stepsPerTurn;
+zStepSize = ledPitch;
+//numRungs = (zStepSize * numTurns) + RUNG_ADJ_FIXME;
+numRungs = floor(height / ledPitch);
 arcTheta=toDegrees((2*PI) / stepsPerTurn);
 
+echo("numRungs: ", numRungs);
+echo("dnaRadius: ", dnaRadius);
+echo("stepsPerTurn: ", stepsPerTurn);
 
 // Generate the helix path. Necessary if we want to be able 
 // to get positional information. Also will add support for 
@@ -68,16 +70,20 @@ module helixPath(l,t,r){ //(height, angle, turns, r) {
     translate([0, 0, 0]) {
         let (
             rhsHelixOuter = helix(l=l, turns=t, r=r),
-            rhsHelixInner = helix(l=l, turns=t+eps, r=r),
+            rhsHelixInner = helix(l=l+eps, turns=t, r=r),
             lhsHelixOuter = helix(l=l, turns=t, r=-r),
-            lhsHelixInner = helix(l=l, turns=t+eps, r=-r)
+            lhsHelixInner = helix(l=l+eps, turns=t, r=-r)
         ) {
+//           echo("max(rhsHelixOuter): ", max(rhsHelixOuter));
+//           echo("min(rhsHelixOuter): ", min(rhsHelixOuter));
+//           echo("max(lhsHelixOuter): ", max(lhsHelixOuter));
+//           echo("min(lhsHelixOuter): ", min(lhsHelixOuter));
            union() {
                union() {
                    difference() {
                         //stroke(rhsHelixOuter, dots=true, dots_color="blue");
                         path_sweep(square(outerHelixSquare, true), rhsHelixOuter);
-                        path_sweep(square(innerHelixSquare, true), lhsHelixInner);
+                        path_sweep(square(innerHelixSquare, true), rhsHelixInner);
                         //echo("helix path 1 (RHS): ", rhsHelixOuter);
                     } 
                     
@@ -150,7 +156,7 @@ module dnaLampHelix() {
 }
 
 // Render it
-dnaLampHelix();
+//dnaLampHelix();
 helixPath(l=height, t=numTurns, r=dnaRadius);
 
 // TODO: Define render for exporting model. Set convexity to 10
